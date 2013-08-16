@@ -33,3 +33,14 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# Virtualenv
+
+Include
+Lib
+man
+Scripts
+deps
+*.bat
+
+*.sublime-workspace

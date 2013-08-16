@@ -1,0 +1,25 @@
+{
+    "folders":
+    [
+        {
+            "path": "./",
+            "folder_exclude_patterns": [
+                "__pycache__",
+                "*.egg-info"
+                ],
+            "file_exclude_patterns": [
+                ".coverage"
+                ]
+        }
+    ],
+    "build_systems":
+    [
+        {
+        "name": "unittest",
+        "cmd": ["nosetests", "--with-coverage", "--cover-package=yggdrasil"],
+        "path": ".\\Scripts",
+        "working_dir": "${project_path}",
+        "shell": true
+        }
+    ]
+}
