@@ -22,9 +22,9 @@ class TestProxyList(unittest.TestCase):
         NodeType = wc.create_node() # object
         TypeType = wc.create_node() # type
 
-        NodeType.__name__ = "NodeType"
         NodeType.__isinstance__ = TypeType.ref
         NodeType.__bases__ = ()
+        NodeType.__duck__ = True
 
         TypeType.__isinstance__ = TypeType.ref
         TypeType.__bases__ = (NodeType.ref, )
@@ -47,6 +47,7 @@ class TestProxyList(unittest.TestCase):
             __bases__=TypesListField.ref,
             __fields__=FieldsDictionaryField.ref,
             __abstract__=BooleanField.ref,
+            __duck__=BooleanField.ref,
             )
 
         # Actually it is possible to make universal field type by describing 

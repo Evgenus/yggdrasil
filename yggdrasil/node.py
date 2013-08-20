@@ -1,5 +1,5 @@
 from shortuuid import uuid as uuid_short
-from collections import UserString, Mapping, Sequence
+from collections import UserString, Mapping, Sequence, deque
 
 class NodeNotFound(KeyError): pass
 class RevisionFinishedError(RuntimeError): pass
@@ -64,7 +64,6 @@ class NodeId(UserString):
 
 class Node(metaclass=NodeMeta):
     __slots__ = "_runtime", "_ref", "__dict__"
-    __atomic_types__ = int, str, float, bool, NodeRef, BranchId, RevisionId, NodeId
     def __init__(self, runtime, node_ref:NodeRef=None):
         self._runtime = runtime
         if node_ref is None:
@@ -79,6 +78,36 @@ class Node(metaclass=NodeMeta):
     def runtime(self):
         return self._runtime
 
+class ReadOnlyNodeProxy(object):
+    """
+    We need some proxy layer abstraction to control working copy bounds.
+    This is basic proxy wrapper used for read only nodes accessed from 
+    read-only (already committed) revision.
+    """
+    __slots__ = "_revision", "_node"
+    __atomic_types__ = int, str, float, bool, NodeRef, BranchId, RevisionId, NodeId
+
+    def __init__(self, revision, node):
+        self._revision = revision
+        self._node = node
+
+    def __setattr__(self, name, value):
+        if name not in self.__slots__:
+            object.__setattr__(self, name, value)
+        raise RuntimeError("This node is read only")
+
+    def __getattr__(self, name):
+        klass_ref = getattr(self._node, "__isinstance__", None)
+        if klass_ref is not None:
+            klass = self._revision.get_node(klass_ref)
+            getter = getattr(klass, "getter", None)
+            if getter is not None:
+                return getter(name)
+        return getattr(self._node, name)
+
+
+class ReadWriteNodeProxy(ReadOnlyNodeProxy): pass
+"""
     def _check_value(self, value):
         if value is None:
             pass
@@ -99,7 +128,8 @@ class Node(metaclass=NodeMeta):
                 self._check_value(value)
             except TypeError as error:
                 raise AttributeError(name)
-        object.__setattr__(self, name, value)
+        object.__setattr__(self._node, name, value)    
+"""
 
 class Revision(Node):
     __slots__ = "_cid", "_ancestors", "_nodes", "_refs", "_finished", "_conflicts"
@@ -123,12 +153,15 @@ class Revision(Node):
         return self._finished
 
     def create_node(self):
+        if self.finished: 
+            raise RevisionFinishedError(self)
         node = Node(self.runtime)
         self.attach_node(node)
-        return node
+        return ReadWriteNodeProxy(self, node)
 
     def attach_node(self, node):
-        if self.finished: raise RevisionFinishedError(self)
+        if self.finished:
+            raise RevisionFinishedError(self)
         node_id = NodeId(node.ref, self.id)
         self._nodes[node.ref] = node_id
         self._refs[node.ref] = self.ref
@@ -136,7 +169,7 @@ class Revision(Node):
 
     def has_node(self, node_ref:NodeRef):
         return node_ref in self._nodes
-
+    
     def search(self, node_ref:NodeRef):
         if self.has_node(node_ref):
             return self
@@ -154,11 +187,14 @@ class Revision(Node):
         if revision_node_ref is None:
             raise NodeNotFound(node_ref)
         revision = self.get_node(revision_node_ref)
-        return revision.get_node(node_ref)
+        node = revision.get_node(node_ref)
+        return ReadWriteNodeProxy(self, node)
 
     def _merge(self, revision):
-        if self.finished: raise RevisionFinishedError(self)
-        if not revision.finished: raise RevisionNotFinishedError(self)
+        if self.finished: 
+            raise RevisionFinishedError(self)
+        if not revision.finished: 
+            raise RevisionNotFinishedError(self)
         # TODO: find conflicted nodes
         for node_ref, node_id in revision._nodes.items():
             if node_ref in self._nodes:
