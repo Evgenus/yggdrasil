@@ -92,22 +92,27 @@ class ReadOnlyNodeProxy(object):
         self._node = node
 
     def __setattr__(self, name, value):
-        if name not in self.__slots__:
+        if name in self.__slots__:
             object.__setattr__(self, name, value)
         raise RuntimeError("This node is read only")
 
     def __getattr__(self, name):
         klass_ref = getattr(self._node, "__isinstance__", None)
         if klass_ref is not None:
-            klass = self._revision.get_node(klass_ref)
+            if klass_ref == self._node.ref:
+                klass = self._node
+            else:
+                klass = self._revision.get_node(klass_ref)
             getter = getattr(klass, "getter", None)
             if getter is not None:
-                return getter(name)
+                return getter(self, name)
         return getattr(self._node, name)
 
+    def __call__(self):
+        return self._node
 
-class ReadWriteNodeProxy(ReadOnlyNodeProxy): pass
-"""
+class ReadWriteNodeProxy(ReadOnlyNodeProxy):
+    __slots__ = "_revision", "_node"
     def _check_value(self, value):
         if value is None:
             pass
@@ -119,26 +124,27 @@ class ReadWriteNodeProxy(ReadOnlyNodeProxy): pass
         elif isinstance(value, Sequence):
             for i in value:
                 self._check_value(i)
-        else: 
+        else:
             raise TypeError(type(value))
 
     def __setattr__(self, name, value):
-        if name not in self.__slots__:
-            try:
-                self._check_value(value)
-            except TypeError as error:
-                raise AttributeError(name)
-        object.__setattr__(self._node, name, value)    
-"""
+        if name in self.__slots__:
+            object.__setattr__(self, name, value)
+        else:
+            # try:
+            #     self._check_value(value)
+            # except TypeError as error:
+            #     raise AttributeError(name)
+            setattr(self._node, name, value)
 
 class Revision(Node):
-    __slots__ = "_cid", "_ancestors", "_nodes", "_refs", "_finished", "_conflicts"
+    __slots__ = "_rid", "_ancestors", "_nodes", "_refs", "_finished", "_conflicts"
     def __init__(self, runtime, node_ref:NodeRef, revision_id:RevisionId, *ancestors):
         super().__init__(runtime, node_ref)
-        self._cid = revision_id
+        self._rid = revision_id
         self._ancestors = ancestors
-        self._nodes = {} # NodeRef -> NodeId
-        self._refs = {} # NodeRef -> RevisionNodeRef
+        self._nodes = set() # NodeRef
+        self._refs = {} # NodeRef -> RevisionId
         self._finished = False
         self._conflicts = {} # NodeRef -> [ NodeId ]
         self.attach_node(self)
@@ -146,7 +152,7 @@ class Revision(Node):
 
     @property
     def id(self):
-        return self._cid
+        return self._rid
 
     @property
     def finished(self):
@@ -163,13 +169,13 @@ class Revision(Node):
         if self.finished:
             raise RevisionFinishedError(self)
         node_id = NodeId(node.ref, self.id)
-        self._nodes[node.ref] = node_id
+        self._nodes.add(node.ref)
         self._refs[node.ref] = self.ref
         self.runtime.register_node(node_id, node)
 
     def has_node(self, node_ref:NodeRef):
         return node_ref in self._nodes
-    
+
     def search(self, node_ref:NodeRef):
         if self.has_node(node_ref):
             return self
@@ -177,18 +183,27 @@ class Revision(Node):
 
     def get_node(self, node_ref:NodeRef):
         if node_ref == self.ref:
-            return self
+            if self.finished:
+                return ReadOnlyNodeProxy(self, self)
+            else:
+                return ReadWriteNodeProxy(self, self)
         
-        node_uid = self._nodes.get(node_ref)
-        if node_uid is not None: 
-            return self.runtime.get_node(node_uid)
-        
-        revision_node_ref = self._refs.get(node_ref)
-        if revision_node_ref is None:
+        if node_ref in self._nodes:
+            node_uid = NodeId(node_ref, self._rid)
+            node = self.runtime.get_node(node_uid)
+            if self.finished:
+                return ReadOnlyNodeProxy(self, node)
+            else:
+                return ReadWriteNodeProxy(self, node)
+
+        revision_id = self._refs.get(node_ref)
+        if revision_id is None:
             raise NodeNotFound(node_ref)
-        revision = self.get_node(revision_node_ref)
-        node = revision.get_node(node_ref)
-        return ReadWriteNodeProxy(self, node)
+
+        node_uid = NodeId(node_ref, revision_id)
+        node = self.runtime.get_node(node_uid)
+
+        return ReadOnlyNodeProxy(self, node)
 
     def _merge(self, revision):
         if self.finished: 
