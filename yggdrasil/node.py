@@ -1,5 +1,18 @@
-from shortuuid import uuid as uuid_short
-from collections import UserString, Mapping, Sequence, deque
+import random
+from collections import UserString, Mapping, Sequence, deque, defaultdict
+
+# ____________________________________________________________________________ #
+
+class ShortUUID(object):
+    def __init__(self, alphabet=None):
+        self._alphabet = alphabet
+
+    def uuid(self, length):
+        return ''.join(random.choice(self._alphabet) for i in range(length))
+
+uuid_short = ShortUUID("23456789abcdefghijkmnopqrstuvwxyz").uuid
+
+# ____________________________________________________________________________ #
 
 class NodeNotFound(KeyError): pass
 class RevisionFinishedError(RuntimeError): pass
@@ -22,7 +35,7 @@ class NodeMeta(type):
 
 class NodeRef(UserString):
     def __init__(self, uid=None):
-        super().__init__(uuid_short() if uid is None else uid)
+        super().__init__(uuid_short(24) if uid is None else uid)
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return False
@@ -31,7 +44,7 @@ class NodeRef(UserString):
 
 class BranchId(UserString):
     def __init__(self, uid=None):
-        super().__init__(uuid_short() if uid is None else uid)
+        super().__init__(uuid_short(16) if uid is None else uid)
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return False
@@ -131,11 +144,13 @@ class ReadWriteNodeProxy(ReadOnlyNodeProxy):
         if name in self.__slots__:
             object.__setattr__(self, name, value)
         else:
-            # try:
-            #     self._check_value(value)
-            # except TypeError as error:
-            #     raise AttributeError(name)
+            try:
+                self._check_value(value)
+            except TypeError as error:
+                raise AttributeError(name)
             setattr(self._node, name, value)
+
+class CopyOnWriteNodeProxy(ReadWriteNodeProxy): pass
 
 class Revision(Node):
     __slots__ = "_rid", "_ancestors", "_nodes", "_refs", "_finished", "_conflicts"
@@ -203,7 +218,7 @@ class Revision(Node):
         node_uid = NodeId(node_ref, revision_id)
         node = self.runtime.get_node(node_uid)
 
-        return ReadOnlyNodeProxy(self, node)
+        return CopyOnWriteNodeProxy(self, node)
 
     def _merge(self, revision):
         if self.finished: 
@@ -295,10 +310,210 @@ class Runtime(object):
         return branch
 
     def get_node(self, node_id:NodeId):
-        return self._nodes[node_id]
+        return self._nodes.get(node_id)
 
     def get_revision(self, revision_id:RevisionId):
-        return self._revisions[revision_id]
+        return self._revisions.get(revision_id)
 
     def get_branch(self, branch_id:BranchId):
-        return self._branches[branch_id]
+        return self._branches.get(branch_id)
+
+    def get_branches(self):
+        for bid in self._branches:
+            yield bid
+
+    def get_revisions(self, branch_id:BranchId):
+        for rid in self._revisions:
+            if rid.branch == branch_id:
+                yield rid
+
+class BoilerPlate(object):
+    def __init__(self, runtime, features=()):
+        self._runtime = runtime
+        self._branch = self._runtime.create_branch()
+        self._wc = self._branch.wc
+        self._delayed = defaultdict(deque)
+        self._finish = set()
+        if features:
+            self.make(*features)
+
+    @property
+    def meta(self):
+        class Metaclass(type):
+            layers = "types", "fields"
+
+            def __new__(meta, name, bases, namespace):
+                node = self._wc.create_node()
+                node.__name__ = name
+
+                for layer in meta.layers:
+                    func = namespace.get(layer)
+                    if func is None:
+                        continue
+                    if layer in self._finish:
+                        func(node)
+                    else:
+                        self._delayed[layer].append((func, node))
+
+                return node
+        return Metaclass
+
+    def finish(self, layer):
+        group = self._delayed[layer]
+        while group:
+            func, node = group.popleft()
+            func(node)
+        self._finish.add(layer)
+
+    def make(hub, *names):
+        class NodeType(metaclass=hub.meta):
+            def types(node):
+                node.__isinstance__ = TypeType.ref
+                node.__bases__ = ()
+                node.__duck__ = True
+            def fields(node):
+                class StringField(metaclass=hub.meta):
+                    def types(node):
+                        node.__isinstance__ = AtomicFieldType.ref
+                        node.__type__ = "String"
+                        node.required = False
+                        node.default = None
+                node.__fields__ = dict(
+                    __name__=StringField.ref,
+                    )
+
+        class TypeType(metaclass=hub.meta):
+            def types(node):
+                node.__isinstance__ = TypeType.ref
+                node.__bases__ = (NodeType.ref, )
+            def fields(node):
+                class IsinstanceField(metaclass=hub.meta):
+                    def types(node):
+                        node.__isinstance__ = LinkFieldType.ref
+                    def fields(node):
+                        node.__type__ = TypeType.ref
+                class TypesListField(metaclass=hub.meta):
+                    def types(node):
+                        node.__isinstance__ = UniformListFieldType.ref
+                    def fields(node):
+                        class TypeField(metaclass=hub.meta):
+                            def types(node):
+                                node.__isinstance__ = LinkFieldType.ref
+                                node.__type__ = TypeType.ref
+                        node.__item__ = TypeField.ref,
+
+                class FieldsDictionaryField(metaclass=hub.meta):
+                    def types(node):
+                        node.__isinstance__ = UniformDictionaryFieldType.ref
+                    def fields(node):
+                        class StringField(metaclass=hub.meta):
+                            def types(node):
+                                node.__isinstance__ = AtomicFieldType.ref
+                                node.__type__ = "String"
+                                node.required = True
+                                node.default = None
+                        class FieldField(metaclass=hub.meta):
+                            def types(node):
+                                node.__isinstance__ = LinkFieldType.ref
+                                node.__type__ = FieldType.ref
+                                node.required = True
+                                node.default = None
+                        node.__key__ = StringField.ref
+                        node.__value__ = FieldField.ref
+                class AbstractField(metaclass=hub.meta):
+                    def types(node):
+                        node.__isinstance__ = AtomicFieldType.ref
+                        node.__type__ = "Boolean"
+                        node.required = False
+                        node.default = False
+                class DuckField(metaclass=hub.meta):
+                    def types(node):
+                        node.__isinstance__ = AtomicFieldType.ref
+                        node.__type__ = "Boolean"
+                        node.required = False
+                        node.default = False
+                node.__fields__ = dict(
+                    __isinstance__=IsinstanceField.ref,
+                    __bases__=TypesListField.ref,
+                    __fields__=FieldsDictionaryField.ref,
+                    __abstract__=AbstractField.ref,
+                    __duck__=DuckField.ref,
+                    )
+
+        class FieldType(metaclass=hub.meta):
+            def types(node):
+                node.__isinstance__ = TypeType.ref
+                node.__bases__ = (NodeType.ref, )
+                node.__abstract__ = True
+
+        class AtomicFieldType(metaclass=hub.meta):
+            def types(node):
+                node.__isinstance__ = TypeType.ref
+                node.__bases__ = (FieldType.ref, )
+                node.__abstract__ = False
+            def fields(node):
+                class StringField(metaclass=hub.meta):
+                    def types(node):
+                        node.__isinstance__ = AtomicFieldType.ref
+                        node.__type__ = "String"
+                        node.required = True
+                        node.default = None
+                node.__fields__ = dict(
+                    __type__=StringField.ref,
+                    )
+
+        class LinkFieldType(metaclass=hub.meta):
+            def types(node):
+                node.__isinstance__ = TypeType.ref
+                node.__bases__ = (FieldType.ref, )
+                node.__abstract__ = False
+            def fields(node):
+                class TypeField(metaclass=hub.meta):
+                    def types(node):
+                        node.__isinstance__ = LinkFieldType.ref
+                        node.__type__ = TypeType.ref
+                node.__fields__ = dict(
+                    __type__=TypeField.ref,
+                    )
+
+        class ComplexFieldType(metaclass=hub.meta):
+            def types(node):
+                node.__isinstance__ = TypeType.ref
+                node.__bases__ = (FieldType.ref, )
+                node.__abstract__ = True
+
+        class ListFieldType(metaclass=hub.meta):
+            def types(node):
+                node.__isinstance__ = TypeType.ref
+                node.__bases__ = (ComplexFieldType.ref, )
+                node.__abstract__ = True
+
+        class DictionaryFieldType(metaclass=hub.meta):
+            def types(node):
+                node.__isinstance__ = TypeType.ref
+                node.__bases__ = (ComplexFieldType.ref, )
+                node.__abstract__ = True
+
+        class UniformListFieldType(metaclass=hub.meta):
+            def types(node):
+                node.__isinstance__ = TypeType.ref
+                node.__bases__ = (ListFieldType.ref, )
+                node.__abstract__ = False
+            def fields(node):
+                node.__fields__ = dict(
+                    __item__=FieldType.ref,
+                    )
+
+        class UniformDictionaryFieldType(metaclass=hub.meta):
+            def types(node):
+                node.__isinstance__ = TypeType.ref
+                node.__bases__ = (DictionaryFieldType.ref, )
+                node.__abstract__ = False
+            def fields(node):
+                node.__fields__ = dict(
+                    __key__=FieldType.ref,
+                    __value__=FieldType.ref,
+                    )
+
+        for name in names:
+            hub.finish(name)

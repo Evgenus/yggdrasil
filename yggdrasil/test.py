@@ -1,7 +1,9 @@
 import unittest
+import yaml
 from .node import *
+from .utils import undefined
 
-class TestProxyList(unittest.TestCase):
+class TestNodesBolierPlate(unittest.TestCase):
     def setUp(self):
         self.runtime = Runtime()
 
@@ -22,136 +24,53 @@ class TestProxyList(unittest.TestCase):
         NodeType = wc.get_node(NodeType.ref)
         assert NodeType._node.__dict__ is NodeType.__dict__
 
-    def test_getter(self):
-        branch = self.runtime.create_branch()
-        wc = branch.wc
-
-        SomeType = wc.create_node()
-
-        def getter(self, name): return self, name
-
-        SomeType.getter = getter
-
-        Instance = wc.create_node()
-        Instance.__isinstance__ = SomeType.ref
-
-        self.assertEqual(Instance.A, (Instance, "A"))
-
     def test_all(self):
         branch = self.runtime.create_branch()
         wc = branch.wc
 
-        # _______________________________________________________ bootstrap __ #
+        hub = BoilerPlate(wc)
+        hub.make("types", "fields")
 
-        NodeType = wc.create_node() # object
-        TypeType = wc.create_node() # type
+        """
+        # ______________________________________________________ code layer __ #
 
-        NodeType.__isinstance__ = TypeType.ref
-        NodeType.__bases__ = ()
-        NodeType.__duck__ = True
+        class RevisionType(metaclass=hub.meta):
+            def types(node):
+                node.__isinstance__ = TypeType.ref
+                node.__bases__ = (NodeType.ref, )
 
-        TypeType.__isinstance__ = TypeType.ref
-        TypeType.__bases__ = (NodeType.ref, )
+        class BranchType(metaclass=hub.meta):
+            def types(node):
+                node.__isinstance__ = TypeType.ref
+                node.__bases__ = (NodeType.ref, )
 
-        # ____________________________________________________ fields layer __ #
+        wc.__isinstance__ = RevisionType.ref
+        branch.__isinstance__ = BranchType.ref
 
-        StringField = wc.create_node()
-        TypeField = wc.create_node()
-        TypesListField = wc.create_node()
-        FieldsDictionaryField = wc.create_node()
-        FieldTypeField = wc.create_node()
-        BooleanField = wc.create_node()
+        CodeType = wc.create_node()
+        CodeType.__isinstance__ = TypeType.ref
+        CodeType.__bases__ = (NodeType.ref, )
+        CodeType.__fields__ = {
+            co_argcount
+            co_kwonlyargcount
+            co_nlocals
+            co_stacksize
+            co_flags
+            co_code
+            co_consts
+            co_names
+            co_varnames
+            co_filename
+            co_name
+            co_firstlineno
+            co_lnotab
+            co_freevars
+            co_cellvars
+            }
+        MethodType = wc.create_node()
+        MethodType.__isinstance__ = TypeType.ref
+        MethodType.__bases__ = (NodeType.ref, )
 
-        NodeType.__fields__ = dict(
-            __name__=StringField.ref
-            )
-
-        TypeType.__fields__ = dict(
-            __isinstance__=TypeField.ref,
-            __bases__=TypesListField.ref,
-            __fields__=FieldsDictionaryField.ref,
-            __abstract__=BooleanField.ref,
-            __duck__=BooleanField.ref,
-            )
-
-        # Actually it is possible to make universal field type by describing 
-        # collections and atomic types inside tree
-        FieldType = wc.create_node()
-        FieldType.__isinstance__ = TypeType.ref
-        FieldType.__bases__ = (NodeType.ref, )
-        FieldType.__abstract__ = True
-
-        AtomicFieldType = wc.create_node()
-        AtomicFieldType.__isinstance__ = TypeType.ref
-        AtomicFieldType.__bases__ = (NodeType.ref, )
-        AtomicFieldType.__fields__ = dict(
-            __type__=StringField.ref,
-            )
-
-        LinkFieldType = wc.create_node()
-        LinkFieldType.__isinstance__ = TypeType.ref
-        LinkFieldType.__bases__ = (FieldType.ref, )
-        LinkFieldType.__fields__ = dict(
-            __type__=TypeField.ref,
-            )
-
-        ComplexFieldType = wc.create_node()
-        ComplexFieldType.__isinstance__ = TypeType.ref
-        ComplexFieldType.__bases__ = (FieldType.ref, )
-        ComplexFieldType.__abstract__ = True
-
-        ListFieldType = wc.create_node()
-        ListFieldType.__isinstance__ = TypeType.ref
-        ListFieldType.__bases__ = (ComplexFieldType.ref, )
-        ListFieldType.__abstract__ = True
-
-        DictionaryFieldType = wc.create_node()
-        DictionaryFieldType.__isinstance__ = TypeType.ref
-        DictionaryFieldType.__bases__ = (ComplexFieldType.ref, )
-        DictionaryFieldType.__abstract__ = True
-
-        UniformListFieldType = wc.create_node()
-        UniformListFieldType.__isinstance__ = TypeType.ref
-        UniformListFieldType.__bases__ = (ListFieldType.ref, )
-        UniformListFieldType.__fields__ = dict(
-            __item__=FieldType.ref,
-            )
-
-        UniformDictionaryFieldType = wc.create_node()
-        UniformDictionaryFieldType.__isinstance__ = TypeType.ref
-        UniformDictionaryFieldType.__bases__ = (DictionaryFieldType.ref, )
-        UniformDictionaryFieldType.__fields__ = dict(
-            __key__=FieldType.ref,
-            __value__=FieldType.ref,
-            )
-
-        FieldsDictionaryField.__isinstance__ = UniformDictionaryFieldType.ref
-        FieldsDictionaryField.__key__ = StringField.ref
-        FieldsDictionaryField.__value__ = FieldTypeField.ref
-
-        FieldTypeField.__isinstance__ = LinkFieldType.ref
-        FieldTypeField.__type__ = FieldType.ref
-
-        TypeField.__isinstance__ = LinkFieldType.ref
-        TypeField.__type__ = TypeType.ref
-
-        TypesListField.__isinstance__ =  UniformListFieldType.ref
-        TypesListField.__item__ = TypeField.ref
-
-        StringField.__isinstance__ = AtomicFieldType.ref
-        StringField.__type__ = "String"
-
-        BooleanField.__isinstance__ = AtomicFieldType.ref
-        BooleanField.__type__ = "Boolean"
-
-        # ___________________________________________________ runtime layer __ #
-
-        RevisionType = wc.create_node()
-        RevisionType.__isinstance__ = TypeType.ref
-        RevisionType.__bases__ = (NodeType.ref, )
-
-        BranchType = wc.create_node()
-        BranchType.__isinstance__ = TypeType.ref
-        BranchType.__bases__ = (NodeType.ref, )
+        """
 
         assert False
