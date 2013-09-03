@@ -1,5 +1,5 @@
 from werkzeug.exceptions import NotFound
-from yggdrasil.node import BranchId
+from yggdrasil.node import BranchId, RevisionId
 
 from . import Page
 
@@ -32,5 +32,15 @@ class Branches(Page):
             raise NotFound()
         return list(self.runtime.get_revisions(bid))
 
-    def on_branch_revision_by_number(self): 
-        pass
+    def on_branch_revision_by_number(self, request, bid, number):
+        rid = RevisionId(BranchId(bid), int(number, 16))
+        revision = self.runtime.get_revision(rid)
+        if revision is None:
+            raise NotFound()
+        result = dict(
+            rid=revision._rid,
+            ancestors=revision._ancestors,
+            nodes=list(revision._nodes),
+            refs=list(revision._refs.keys()),
+            finished=revision._finished,
+            )

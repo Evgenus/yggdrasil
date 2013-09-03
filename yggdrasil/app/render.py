@@ -10,4 +10,7 @@ class APIEncoder(libjson.JSONEncoder):
         return libjson.JSONEncoder.default(self, obj)
 
 def json(data):
-    return libjson.dumps(data, cls=APIEncoder, indent=2)
+    return libjson.dumps(data, 
+    	cls=APIEncoder, 
+    	indent=2, 
+    	sort_keys=True)

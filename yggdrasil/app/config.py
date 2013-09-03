@@ -25,16 +25,17 @@ def construct_from_integer(cls, loader, node):
     scalar = int(loader.construct_scalar(node))
     return cls(scalar)
 
+def resolve_builtin(loader, node):
+    scalar = loader.construct_scalar(node)
+    return resolve(scalar)
+
 def get_dependency(name): 
     return Loader.dependencies[name]
 
 def add_dependencies(**deps): 
     Loader.dependencies.update(deps)
 
-class Config(UserDict):
-    def __init__(self, renderer, **kwargs):
-        super().__init__(kwargs)
-        self["renderer"] = resolve(renderer)
+class Config(UserDict): pass
 
 class TypesTable(object):
     loader = Loader
@@ -43,10 +44,11 @@ class TypesTable(object):
             self.register(name, **declaration)
 
     def register(self, _name, type, load):
-        loader = partial(resolve(load), resolve(type))
+        loader = partial(load, type)
         self.loader.add_constructor("!" + _name, loader)
 
 Loader.add_constructor("!TypesTable", partial(construct_from_mapping, TypesTable))
+Loader.add_constructor("!resolve", resolve_builtin)
 
 def load_file(filename_or_stream):
     if isinstance(filename_or_stream, str):

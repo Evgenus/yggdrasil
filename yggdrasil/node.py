@@ -153,7 +153,7 @@ class ReadWriteNodeProxy(ReadOnlyNodeProxy):
 class CopyOnWriteNodeProxy(ReadWriteNodeProxy): pass
 
 class Revision(Node):
-    __slots__ = "_rid", "_ancestors", "_nodes", "_refs", "_finished", "_conflicts"
+    __slots__ = "_rid", "_ancestors", "_nodes", "_refs", "_finished"
     def __init__(self, runtime, node_ref:NodeRef, revision_id:RevisionId, *ancestors):
         super().__init__(runtime, node_ref)
         self._rid = revision_id
@@ -161,7 +161,6 @@ class Revision(Node):
         self._nodes = set() # NodeRef
         self._refs = {} # NodeRef -> RevisionId
         self._finished = False
-        self._conflicts = {} # NodeRef -> [ NodeId ]
         self.attach_node(self)
         runtime.register_revision(self)
 
@@ -219,7 +218,8 @@ class Revision(Node):
         node = self.runtime.get_node(node_uid)
 
         return CopyOnWriteNodeProxy(self, node)
-
+        
+"""
     def _merge(self, revision):
         if self.finished: 
             raise RevisionFinishedError(self)
@@ -245,6 +245,7 @@ class Revision(Node):
                 pass
             else:
                 pass
+"""
 
 class Branch(Node):
     __slots__ = "_bid", "_revision", "_wc"
