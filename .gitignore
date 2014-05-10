@@ -44,3 +44,4 @@ deps
 *.bat
 
 *.sublime-workspace
+venv/pyvenv.cfg
