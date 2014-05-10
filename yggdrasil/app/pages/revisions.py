@@ -43,6 +43,3 @@ class Revisions(Page):
             refs=refs,
             )
         return result
-
-    def on_all_revision_nodes(self): 
-        pass

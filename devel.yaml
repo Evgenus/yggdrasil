@@ -127,9 +127,6 @@ server:
                     - !Rule
                         string: /<string(length=25):rid>
                         endpoint: revision_by_id
-                    - !Rule
-                        string: /<string(length=25):rid>/nodes
-                        endpoint: all_revision_nodes
 
             - !Submount
                 path: /node
