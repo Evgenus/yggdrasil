@@ -117,9 +117,6 @@ server:
                     - !Rule
                         string: /<string(length=16):bid>/revs
                         endpoint: all_branch_revisions
-                    - !Rule
-                        string: /<string(length=16):bid>/revs/<string(length=8):number>
-                        endpoint: branch_revision_by_number
 
             - !Submount
                 path: /revision

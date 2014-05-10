@@ -1,16 +1,27 @@
 import random
 from collections import UserString, Mapping, Sequence, deque, defaultdict
+from functools import lru_cache
 
 # ____________________________________________________________________________ #
 
-class ShortUUID(object):
-    def __init__(self, alphabet=None):
-        self._alphabet = alphabet
-
-    def uuid(self, length):
-        return ''.join(random.choice(self._alphabet) for i in range(length))
-
-uuid_short = ShortUUID("23456789abcdefghijkmnopqrstuvwxyz").uuid
+@lru_cache()
+def UUID(length, alphabet=None):
+    _alphabet = alphabet or "23456789abcdefghijkmnopqrstuvwxyz"
+    class _UUID(UserString):
+        def __init__(self):
+            super().__init__(
+                ''.join(random.choice(_alphabet)  
+                    for i in range(length))
+            )
+        @classmethod
+        def from_string(cls, s):
+            assert isinstance(s, str)
+            assert len(s) == length
+            assert all(c in _alphabet for c in s)
+            instance = cls()
+            instance.data = s
+            return instance
+    return _UUID
 
 # ____________________________________________________________________________ #
 
@@ -34,22 +45,32 @@ class NodeMeta(type):
 # ____________________________________________________________________________ #
 
 class NodeRef(UserString):
-    def __init__(self, uid=None):
-        super().__init__(uuid_short(24) if uid is None else uid)
+    def __init__(self, uid:UUID(24)=None):
+        assert uid is None or isinstance(uid, UUID(24))
+        super().__init__(UUID(24)() if uid is None else uid)
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return False
         return super().__eq__(other)
-    def __hash__(self): return super().__hash__()
+    def __hash__(self): 
+        return super().__hash__()
+    @classmethod
+    def from_string(cls, s):
+        return cls(UUID(24).from_string(s))
 
 class BranchId(UserString):
-    def __init__(self, uid=None):
-        super().__init__(uuid_short(16) if uid is None else uid)
+    def __init__(self, uid:UUID(16)=None):
+        assert uid is None or isinstance(uid, UUID(16))
+        super().__init__(UUID(16)() if uid is None else uid)
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return False
         return super().__eq__(other)
-    def __hash__(self): return super().__hash__()
+    def __hash__(self): 
+        return super().__hash__()
+    @classmethod
+    def from_string(cls, s):
+        return cls(UUID(16).from_string(s))
 
 class RevisionId(UserString):
     def __init__(self, branch_id:BranchId, number:int):
@@ -60,7 +81,15 @@ class RevisionId(UserString):
         if not isinstance(other, type(self)):
             return False
         return super().__eq__(other)
-    def __hash__(self): return super().__hash__()
+    def __hash__(self): 
+        return super().__hash__()
+    @classmethod
+    def from_string(cls, s):
+        assert isinstance(s, str)
+        assert len(s) == 25
+        bid = BranchId.from_string(s[:16])
+        number = int(s[17:], 16)
+        return cls(bid, number)
 
 class NodeId(UserString):
     def __init__(self, node_ref:NodeRef, revision_id:RevisionId):
@@ -281,7 +310,7 @@ class Branch(Node):
         old = self.wc
         old._finished = True
         self._revision += 1
-        wc = Revision(self._runtime, None, RevisionId(self.id, self._revision), old)
+        wc = Revision(self._runtime, None, RevisionId(self.id, self._revision), old.id)
         self._wc = wc.id
 
 # TODO: Determine whether node created or requested
