@@ -45,9 +45,9 @@ class NodeMeta(type):
 # ____________________________________________________________________________ #
 
 class NodeRef(UserString):
-    def __init__(self, uid:UUID(24)=None):
-        assert uid is None or isinstance(uid, UUID(24))
-        super().__init__(UUID(24)() if uid is None else uid)
+    def __init__(self, uid:UUID(32)=None):
+        assert uid is None or isinstance(uid, UUID(32))
+        super().__init__(UUID(32)() if uid is None else uid)
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return False
@@ -56,7 +56,7 @@ class NodeRef(UserString):
         return super().__hash__()
     @classmethod
     def from_string(cls, s):
-        return cls(UUID(24).from_string(s))
+        return cls(UUID(32).from_string(s))
 
 class BranchId(UserString):
     def __init__(self, uid:UUID(16)=None):
