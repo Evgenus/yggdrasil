@@ -4,3 +4,6 @@ class Page(object):
         if method is None:
             raise KeyError(name)
         return method
+
+    def build_url(self, request, endpoint, **params):
+        return request.urls.build(endpoint, params, force_external=True)
