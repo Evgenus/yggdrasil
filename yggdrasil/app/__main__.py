@@ -6,7 +6,7 @@ if __name__ == '__main__' and __package__ is None:
     __package__ = str("yggdrasil.app")
     del sys, os
 
-from .config import load_config
+from metaconfig import Config
 
 def parse_args():
     import argparse
@@ -20,11 +20,15 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    config = load_config(args.config)
 
-    config['extra_files'] = [
+    config = Config()
+    config.load(args.config)
+
+    server = config.get_dependency("server")
+
+    server['extra_files'] = [
         args.config,
         ]
 
     from werkzeug.serving import run_simple
-    run_simple(**config)
+    run_simple(**server)

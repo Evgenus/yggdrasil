@@ -1,169 +1,143 @@
-# Resolving
+# Meta
 --- !TypesTable
-resolve:
-    type: !resolve zope.dottedname.resolve.resolve
-    load: !resolve yggdrasil.app.config.construct_from_string
-...
-
-# TypesRecursion
---- !TypesTable
-TypesTable:
-    type: !resolve yggdrasil.app.config.TypesTable
-    load: !resolve yggdrasil.app.config.construct_from_mapping
-...
-
-# Config
---- !TypesTable
-Config:
-    type: !resolve yggdrasil.app.config.Config
-    load: !resolve yggdrasil.app.config.construct_from_mapping
-add_dependencies: 
-    type: !resolve yggdrasil.app.config.add_dependencies
-    load: !resolve yggdrasil.app.config.construct_from_mapping
-get_dependency: 
-    type: !resolve yggdrasil.app.config.get_dependency
-    load: !resolve yggdrasil.app.config.construct_from_string
-...
-
-# Modularity
---- !TypesTable
-load_file:
-    type: !resolve yggdrasil.app.config.load_file
-    load: !resolve yggdrasil.app.config.construct_from_string
+"tag:yaml.org,2002:map":
+  type: !resolve yggdrasil.record.Record
+  load: !resolve metaconfig.construct_from_mapping
 ...
 
 # Routing
 --- !TypesTable
 Map:
     type: !resolve werkzeug.routing.Map
-    load: !resolve yggdrasil.app.config.construct_from_mapping
+    load: !resolve metaconfig.construct_from_mapping
 EndpointPrefix:
     type: !resolve werkzeug.routing.EndpointPrefix
-    load: !resolve yggdrasil.app.config.construct_from_mapping
+    load: !resolve metaconfig.construct_from_mapping
 Submount:
     type: !resolve werkzeug.routing.Submount
-    load: !resolve yggdrasil.app.config.construct_from_mapping
+    load: !resolve metaconfig.construct_from_mapping
 Rule:
     type: !resolve werkzeug.routing.Rule
-    load: !resolve yggdrasil.app.config.construct_from_mapping
+    load: !resolve metaconfig.construct_from_mapping
 ...
 
 # Model
 --- !TypesTable
 BoilerPlate:
     type: !resolve yggdrasil.node.BoilerPlate
-    load: !resolve yggdrasil.app.config.construct_from_mapping
+    load: !resolve metaconfig.construct_from_mapping
 Runtime:
     type: !resolve yggdrasil.node.Runtime
-    load: !resolve yggdrasil.app.config.construct_from_mapping
+    load: !resolve metaconfig.construct_from_mapping
 Redis:
     type: !resolve redis.Redis
-    load: !resolve yggdrasil.app.config.construct_from_mapping
+    load: !resolve metaconfig.construct_from_mapping
 ...
 
 # Model
 --- !TypesTable
 WebApp:
     type: !resolve yggdrasil.app.WebApp
-    load: !resolve yggdrasil.app.config.construct_from_mapping
+    load: !resolve metaconfig.construct_from_mapping
 Nodes:
     type: !resolve yggdrasil.app.pages.nodes.Nodes
-    load: !resolve yggdrasil.app.config.construct_from_mapping
+    load: !resolve metaconfig.construct_from_mapping
 Revisions:
     type: !resolve yggdrasil.app.pages.revisions.Revisions
-    load: !resolve yggdrasil.app.config.construct_from_mapping
+    load: !resolve metaconfig.construct_from_mapping
 Branches:
     type: !resolve yggdrasil.app.pages.branches.Branches
-    load: !resolve yggdrasil.app.config.construct_from_mapping
+    load: !resolve metaconfig.construct_from_mapping
 ...
 
----
-- !add_dependencies
-    runtime: !Runtime {}
-
-- !add_dependencies
-    redis: !Redis
-        host: localhost
-        port: 6379
-        db: 0
-        password: ~
-        socket_timeout: ~
-        connection_pool: ~
-        charset: utf-8
-        errors: strict
-        decode_responses: False
-        unix_socket_path: ~
-
-- !add_dependencies
-    boilerplate: !BoilerPlate
-        runtime: !get_dependency runtime
+--- !add_dependencies
+runtime: !Runtime {}
 ...
 
---- !Config
+--- !add_dependencies
+redis: !Redis
+    host: localhost
+    port: 6379
+    db: 0
+    password: ~
+    socket_timeout: ~
+    connection_pool: ~
+    charset: utf-8
+    errors: strict
+    decode_responses: False
+    unix_socket_path: ~
+...
 
-hostname: 127.0.0.1
-port: 5000
-use_debugger: True
-use_reloader: True
+--- !add_dependencies
+boilerplate: !BoilerPlate
+    runtime: !get_dependency runtime
+...
 
-application: !WebApp
-    renderer: !resolve yggdrasil.app.render.json
+--- !add_dependencies
+server:
+    hostname: 127.0.0.1
+    port: 5000
+    use_debugger: True
+    use_reloader: True
 
-    namespace:
-        nodes: !Nodes
-            runtime: !get_dependency runtime
-        revisions: !Revisions
-            runtime: !get_dependency runtime
-        branches: !Branches
-            runtime: !get_dependency runtime
+    application: !WebApp
+        renderer: !resolve yggdrasil.app.render.json
 
-    urlmap: !Map
-        rules:
-        - !Rule
-            string: /
-            methods: 
-            - GET
-            endpoint: intro
+        namespace:
+            nodes: !Nodes
+                runtime: !get_dependency runtime
+            revisions: !Revisions
+                runtime: !get_dependency runtime
+            branches: !Branches
+                runtime: !get_dependency runtime
 
-        - !Submount
-            path: /branch/
-            rules: 
-            - !EndpointPrefix
-                prefix: branches.
-                rules:
-                - !Rule
-                    string: /
-                    endpoint: all_branches
-                - !Rule
-                    string: /<string(length=16):bid>
-                    endpoint: branch_by_id
-                - !Rule
-                    string: /<string(length=16):bid>/revs
-                    endpoint: all_branch_revisions
-                - !Rule
-                    string: /<string(length=16):bid>/revs/<string(length=8):number>
-                    endpoint: branch_revision_by_number
+        urlmap: !Map
+            rules:
+            - !Rule
+                string: /
+                methods: 
+                - GET
+                endpoint: intro
 
-        - !Submount
-            path: /revision
-            rules: 
-            - !EndpointPrefix
-                prefix: revisions.
-                rules:
-                - !Rule
-                    string: /<string(length=25):rid>
-                    endpoint: revision_by_id
-                - !Rule
-                    string: /<string(length=25):rid>/nodes
-                    endpoint: all_revision_nodes
+            - !Submount
+                path: /branch/
+                rules: 
+                - !EndpointPrefix
+                    prefix: branches.
+                    rules:
+                    - !Rule
+                        string: /
+                        endpoint: all_branches
+                    - !Rule
+                        string: /<string(length=16):bid>
+                        endpoint: branch_by_id
+                    - !Rule
+                        string: /<string(length=16):bid>/revs
+                        endpoint: all_branch_revisions
+                    - !Rule
+                        string: /<string(length=16):bid>/revs/<string(length=8):number>
+                        endpoint: branch_revision_by_number
 
-        - !Submount
-            path: /node
-            rules: 
-            - !EndpointPrefix
-                prefix: nodes.
-                rules:
-                - !Rule
-                    string: /<string(length=32):uid>
-                    endpoint: by_uid
+            - !Submount
+                path: /revision
+                rules: 
+                - !EndpointPrefix
+                    prefix: revisions.
+                    rules:
+                    - !Rule
+                        string: /<string(length=25):rid>
+                        endpoint: revision_by_id
+                    - !Rule
+                        string: /<string(length=25):rid>/nodes
+                        endpoint: all_revision_nodes
+
+            - !Submount
+                path: /node
+                rules: 
+                - !EndpointPrefix
+                    prefix: nodes.
+                    rules:
+                    - !Rule
+                        string: /<string(length=32):uid>
+                        endpoint: by_uid
 ...

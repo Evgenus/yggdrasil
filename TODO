@@ -1,0 +1,1 @@
+Fix config double loading for monitor process and worker
