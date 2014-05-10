@@ -71,6 +71,9 @@ redis: !Redis
 --- !add_dependencies
 boilerplate: !BoilerPlate
     runtime: !get_dependency runtime
+    features: 
+        - types
+        - fields
 ...
 
 --- !add_dependencies

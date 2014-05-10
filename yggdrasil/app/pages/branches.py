@@ -19,9 +19,9 @@ class Branches(Page):
         if branch is None:
             raise NotFound()
         result = dict(
-            bid=branch._bid,
+            bid=branch.id,
             revision=branch._revision,
-            wc=branch._wc,
+            wc=branch.wc,
             data=branch.__dict__,
             )
         return result
@@ -30,17 +30,21 @@ class Branches(Page):
         branch = self.runtime.get_branch(BranchId(bid))
         if branch is None:
             raise NotFound()
-        return list(self.runtime.get_revisions(bid))
+        return list(self.runtime.get_revisions(branch.id))
 
     def on_branch_revision_by_number(self, request, bid, number):
-        rid = RevisionId(BranchId(bid), int(number, 16))
+        branch = self.runtime.get_branch(BranchId(bid))
+        if branch is None:
+            raise NotFound()
+        rid = RevisionId(branch.id, int(number, 16))
         revision = self.runtime.get_revision(rid)
         if revision is None:
             raise NotFound()
         result = dict(
-            rid=revision._rid,
+            rid=revision.id,
             ancestors=revision._ancestors,
             nodes=list(revision._nodes),
             refs=list(revision._refs.keys()),
             finished=revision._finished,
             )
+        return result

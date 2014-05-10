@@ -281,7 +281,7 @@ class Branch(Node):
         old = self.wc
         old._finished = True
         self._revision += 1
-        wc = Revision(runtime, None, RevisionId(self.id, self._revision), old)
+        wc = Revision(self._runtime, None, RevisionId(self.id, self._revision), old)
         self._wc = wc.id
 
 # TODO: Determine whether node created or requested
@@ -337,6 +337,7 @@ class BoilerPlate(object):
         self._finish = set()
         if features:
             self.make(*features)
+        self._branch.commit()
 
     @property
     def meta(self):
