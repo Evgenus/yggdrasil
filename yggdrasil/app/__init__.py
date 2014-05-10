@@ -3,7 +3,7 @@ from operator import getitem
 from inspect import getdoc
 
 from werkzeug.exceptions import HTTPException, NotFound
-from werkzeug.wrappers import Request, Response
+from werkzeug.wrappers import Request
 
 class WebApp(object):
     def __init__(self, urlmap, namespace, renderer):
@@ -25,12 +25,12 @@ class WebApp(object):
             return error
         segments = path.split(".")
         endpoint = reduce(getitem, segments, self)
+        request.urls = adapter
         try:
             data = endpoint(request, **values)
         except HTTPException as error:
             return error
-        body = self.renderer(data)
-        return Response(body)
+        return self.renderer(data)
 
     def wsgi_app(self, environ, start_response):
         request = Request(environ)
