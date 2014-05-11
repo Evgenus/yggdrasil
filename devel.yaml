@@ -135,6 +135,6 @@ server:
                     prefix: nodes.
                     rules:
                     - !Rule
-                        string: /<string(length=32):uid>
+                        string: /<string(length=58):uid>
                         endpoint: by_uid
 ...

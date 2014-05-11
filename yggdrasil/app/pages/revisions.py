@@ -1,9 +1,13 @@
-from . import Page
 from werkzeug.exceptions import NotFound
+
+from yggdrasil.record import Record
 from yggdrasil.node import (
     RevisionId, 
     BranchId,
+    NodeId,
     )
+
+from . import Page
 
 class Revisions(Page):
     def __init__(self, runtime):
@@ -14,32 +18,31 @@ class Revisions(Page):
         revision = self.runtime.get_revision(rid)
         if revision is None:
             raise NotFound()
-        nodes = list(revision._nodes)
-        node_refs = list(revision._refs.keys())
 
-        refs = {
-            "ancestors": {},
-            "nodes": {},
-            "nodes_refs": {},
-        }
-        refs["branch"] = self.build_url(request, 
+        refs = Record()
+        refs.branch = self.build_url(request, 
                 "branches.branch_by_id", bid=rid.branch)
-        for number, rid in enumerate(revision._ancestors):
-            refs["ancestors"][number] = self.build_url(request, 
-                "revisions.revision_by_id", rid=rid)
-        for number, uid in enumerate(nodes):
-            refs["nodes"][number] = self.build_url(request, 
-                "nodes.by_uid", uid=uid)
-        for number, uid in enumerate(node_refs):
-            refs["nodes_refs"][number] = self.build_url(request, 
-                "nodes.by_uid", uid=uid)
 
-        result = dict(
-            rid=revision.id,
-            ancestors=revision._ancestors,
-            nodes=nodes,
-            nodes_refs=node_refs,
-            finished=revision._finished,
-            refs=refs,
-            )
+        refs.ancestors = Record()
+        for number, rid in enumerate(revision.ancestors):
+            refs.ancestors[number] = self.build_url(request, 
+                "revisions.revision_by_id", rid=rid)
+
+        refs.nodes = Record()
+        for number, node_ref in enumerate(revision.nodes):
+            refs.nodes[number] = self.build_url(request, 
+                "nodes.by_uid", uid=NodeId(node_ref, revision.id))
+
+        refs.nodes_refs = Record()
+        for number, (ref, rid) in enumerate(revision.refs.items()):
+            refs.nodes_refs[number] = self.build_url(request, 
+                "nodes.by_uid", uid=NodeId(ref, rid))
+
+        result = Record()
+        result.rid = revision.id
+        result.finished = revision.finished
+        result.ancestors = revision.ancestors
+        result.nodes = revision.nodes
+        result.nodes_refs = revision.refs
+        result.refs = refs
         return result

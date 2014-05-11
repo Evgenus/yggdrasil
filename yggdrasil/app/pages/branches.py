@@ -1,4 +1,6 @@
 from werkzeug.exceptions import NotFound
+
+from yggdrasil.record import Record
 from yggdrasil.node import BranchId
 
 from . import Page
@@ -10,15 +12,16 @@ class Branches(Page):
     def on_all_branches(self, request): 
         branches = list(self.runtime.get_branches())
 
-        refs = {"branches": {}}
+        refs = Record()
+
+        refs.branches = Record()
         for number, bid in enumerate(branches):
-            refs["branches"][number] = self.build_url(request,
+            refs.branches[number] = self.build_url(request,
                 "branches.branch_by_id", bid=bid)
 
-        result = dict(
-            branches=branches,
-            refs=refs,
-            )
+        result = Record()
+        result.branches = branches
+        result.refs = refs
         return result
 
     def on_branch_by_id(self, request, bid):
@@ -26,18 +29,17 @@ class Branches(Page):
         if branch is None:
             raise NotFound()
 
-        refs = {}
-        refs["list"] = self.build_url(request,
+        refs = Record()
+        refs.list = self.build_url(request,
             "branches.all_branches")
-        refs["revisions"] = self.build_url(request,
+        refs.revisions = self.build_url(request,
             "branches.all_branch_revisions", bid=bid)
 
-        result = dict(
-            bid=branch.id,
-            revision=branch._revision,
-            wc=branch._wc,
-            refs=refs,
-            )
+        result = Record()  
+        result.bid = branch.id
+        result.revision = branch.revision
+        result.wc = branch.wc.id
+        result.refs = refs
         return result
 
     def on_all_branch_revisions(self, request, bid):
@@ -46,13 +48,14 @@ class Branches(Page):
             raise NotFound()
         revisions = list(self.runtime.get_revisions(branch.id))
 
-        refs = {"revisions": {}}
+        refs = Record()
+        refs.revisions = Record()
+
         for number, rid in enumerate(revisions):
-            refs["revisions"][number] = self.build_url(request,
+            refs.revisions[number] = self.build_url(request,
                 "revisions.revision_by_id", rid=rid)
 
-        return dict(
-            revisions=revisions,
-            refs=refs,
-            )
-
+        result = Record()
+        result.revisions = revisions
+        result.refs = refs
+        return result

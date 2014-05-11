@@ -2,6 +2,11 @@ import random
 from collections import UserString, Mapping, Sequence, deque, defaultdict
 from functools import lru_cache
 
+from .utils import (
+    ReadOnlyDict,
+    ReadOnlySet,
+    )
+
 # ____________________________________________________________________________ #
 
 @lru_cache()
@@ -100,7 +105,15 @@ class NodeId(UserString):
         if not isinstance(other, type(self)):
             return False
         return super().__eq__(other)
-    def __hash__(self): return super().__hash__()
+    def __hash__(self): 
+        return super().__hash__()
+    @classmethod
+    def from_string(cls, s):
+        assert isinstance(s, str)
+        assert len(s) == 58
+        rid = RevisionId.from_string(s[:25])
+        ref = NodeRef.from_string(s[26:])
+        return cls(ref, rid)
 
 # ____________________________________________________________________________ #
 
@@ -119,6 +132,10 @@ class Node(metaclass=NodeMeta):
     @property
     def runtime(self):
         return self._runtime
+
+    @property
+    def content(self):
+        return ReadOnlyDict(self.__dict__)
 
 class ReadOnlyNodeProxy(object):
     """
@@ -201,6 +218,18 @@ class Revision(Node):
     def finished(self):
         return self._finished
 
+    @property
+    def ancestors(self):
+        return self._ancestors
+
+    @property
+    def nodes(self):
+        return ReadOnlySet(self._nodes)
+
+    @property
+    def refs(self):
+        return ReadOnlyDict(self._refs)
+
     def create_node(self):
         if self.finished: 
             raise RevisionFinishedError(self)
@@ -213,7 +242,7 @@ class Revision(Node):
             raise RevisionFinishedError(self)
         node_id = NodeId(node.ref, self.id)
         self._nodes.add(node.ref)
-        self._refs[node.ref] = self.ref
+        self._refs[node.ref] = self.id
         self.runtime.register_node(node_id, node)
 
     def has_node(self, node_ref:NodeRef):
