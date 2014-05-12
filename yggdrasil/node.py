@@ -460,7 +460,7 @@ class BoilerPlate(object):
                             def types(node):
                                 node.__isinstance__ = LinkFieldType.ref
                                 node.__type__ = TypeType.ref
-                        node.__item__ = TypeField.ref,
+                        node.__item__ = TypeField.ref
 
                 class FieldsDictionaryField(metaclass=hub.meta):
                     def types(node):
