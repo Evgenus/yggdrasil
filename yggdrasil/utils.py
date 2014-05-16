@@ -159,6 +159,8 @@ class ProxyList(collections.MutableSequence):
     def __eq__(self, other):
         if not isinstance(other, collections.Iterable):
             return False
+        if len(v1) != len(v2):
+            return False
         for v1, v2 in zip(self, other):
             if v1 != v2: return False
         return True
@@ -335,13 +337,11 @@ class ProxyListMerge(object):
         raise RuntimeError("Unreachable code")
 
 class ProxyDict(collections.MutableMapping):
-    def __init__(self, data=None):
-        self.fields = {}
-        self.changed = {}
-        self.added = set()
-        self.removed = {}
-        if data is not None:
-            self.fields.update(data)
+    def __init__(self, data):
+        self.fields = type(data)(data) # contains new changed or added values
+        self.changed = {} # contains old changed values
+        self.added = set() # contains keys for added values
+        self.removed = {} # contains old removed values
 
     def __iter__(self):
         return iter(self.fields)
