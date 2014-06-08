@@ -77,6 +77,52 @@ boilerplate: !BoilerPlate
 ...
 
 --- !add_dependencies
+urlmap: !Map
+    rules:
+    - !Rule
+        string: /
+        methods: 
+        - GET
+        endpoint: intro
+
+    - !Submount
+        path: /branch/
+        rules: 
+        - !EndpointPrefix
+            prefix: branches.
+            rules:
+            - !Rule
+                string: /
+                endpoint: all_branches
+            - !Rule
+                string: /<string(length=16):bid>
+                endpoint: branch_by_id
+            - !Rule
+                string: /<string(length=16):bid>/revs
+                endpoint: all_branch_revisions
+
+    - !Submount
+        path: /revision
+        rules: 
+        - !EndpointPrefix
+            prefix: revisions.
+            rules:
+            - !Rule
+                string: /<string(length=25):rid>
+                endpoint: revision_by_id
+
+    - !Submount
+        path: /node
+        rules: 
+        - !EndpointPrefix
+            prefix: nodes.
+            rules:
+            - !Rule
+                string: /<string(length=58):uid>
+                endpoint: by_uid
+...
+
+--- !add_dependencies
 server:
     hostname: 127.0.0.1
     port: 5000
@@ -97,47 +143,5 @@ server:
                 runtime: !get_dependency runtime
                 show_refs: yes
 
-        urlmap: !Map
-            rules:
-            - !Rule
-                string: /
-                methods: 
-                - GET
-                endpoint: intro
-
-            - !Submount
-                path: /branch/
-                rules: 
-                - !EndpointPrefix
-                    prefix: branches.
-                    rules:
-                    - !Rule
-                        string: /
-                        endpoint: all_branches
-                    - !Rule
-                        string: /<string(length=16):bid>
-                        endpoint: branch_by_id
-                    - !Rule
-                        string: /<string(length=16):bid>/revs
-                        endpoint: all_branch_revisions
-
-            - !Submount
-                path: /revision
-                rules: 
-                - !EndpointPrefix
-                    prefix: revisions.
-                    rules:
-                    - !Rule
-                        string: /<string(length=25):rid>
-                        endpoint: revision_by_id
-
-            - !Submount
-                path: /node
-                rules: 
-                - !EndpointPrefix
-                    prefix: nodes.
-                    rules:
-                    - !Rule
-                        string: /<string(length=58):uid>
-                        endpoint: by_uid
+        urlmap: !get_dependency urlmap
 ...
