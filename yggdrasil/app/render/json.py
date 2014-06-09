@@ -3,7 +3,6 @@ from collections import UserString
 
 from werkzeug.wrappers import Response
 
-from yggdrasil import node
 from yggdrasil.utils import (
     ReadOnlySet,
     ReadOnlyDict,
@@ -20,7 +19,7 @@ class APIEncoder(libjson.JSONEncoder):
         else:
             return libjson.JSONEncoder.default(self, obj)
 
-def json(data):
+def renderer(data):
     body = libjson.dumps(data, 
         cls=APIEncoder, 
         indent=2)
