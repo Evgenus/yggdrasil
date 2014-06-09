@@ -343,8 +343,11 @@ class ProxyListMerge(object):
         raise RuntimeError("Unreachable code")
 
 class ProxyDict(collections.MutableMapping):
-    def __init__(self, data):
-        self.fields = type(data)(data) # contains new changed or added values
+    def __init__(self, data=Undefined):
+        if data is Undefined:
+            self.fields = {}
+        else:
+            self.fields = type(data)(data) # contains new changed or added values
         self.changed = {} # contains old changed values
         self.added = set() # contains keys for added values
         self.removed = {} # contains old removed values

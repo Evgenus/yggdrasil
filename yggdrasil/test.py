@@ -25,11 +25,7 @@ class TestNodesBolierPlate(unittest.TestCase):
         assert NodeType._node.__dict__ is NodeType.__dict__
 
     def test_all(self):
-        branch = self.runtime.create_branch()
-        wc = branch.wc
-
-        hub = BoilerPlate(wc)
-        hub.make("types", "fields")
+        hub = BoilerPlate(self.runtime, features=("types", "fields"))
 
         """
         # ______________________________________________________ code layer __ #
@@ -72,5 +68,3 @@ class TestNodesBolierPlate(unittest.TestCase):
         MethodType.__bases__ = (NodeType.ref, )
 
         """
-
-        assert False
