@@ -32,8 +32,14 @@ class ReadOnlySet(collections.Set):
         return "ReadOnlySet({!r})".format(self.__items__)
 
 class ReadOnlyDict(collections.Mapping):
-    def __init__(self, data):
-        self.__items__ = data
+    def __init__(self, *args, **kwargs):
+        if len(args) > 1:
+            return ValueError("Invalid arguments")
+        if len(args) == 1:
+            self.__items__ = args[0]
+            self.__items__.update(kwargs)
+        else:
+            self.__items__ = kwargs
     def __getitem__(self, key):
         return self.__items__[key]
     def __iter__(self):

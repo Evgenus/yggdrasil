@@ -2,6 +2,7 @@ from werkzeug.exceptions import NotFound
 
 from yggdrasil.record import Record
 from yggdrasil.node import NodeId, NodeRef
+from yggdrasil.utils import ReadOnlyDict
 
 from . import Page
 
@@ -21,6 +22,13 @@ class Nodes(Page):
                 if subinspect is not None:
                     result[number] = subinspect
             if result: return result
+        elif isinstance(value, ReadOnlyDict):
+            result = Record()
+            for name, subvalue in value.items():
+                subinspect = self.inspect(request, revision, subvalue)
+                if subinspect is not None:
+                    result[name] = subinspect
+            if result: return result                
 
     def on_by_uid(self, request, uid):
         uid = NodeId.from_string(uid)

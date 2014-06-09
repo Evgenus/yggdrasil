@@ -438,7 +438,7 @@ class BoilerPlate(object):
                         node.__type__ = "String"
                         node.required = False
                         node.default = None
-                node.__fields__ = dict(
+                node.__fields__ = ReadOnlyDict(
                     __name__=StringField.ref,
                     )
 
@@ -492,7 +492,7 @@ class BoilerPlate(object):
                         node.__type__ = "Boolean"
                         node.required = False
                         node.default = False
-                node.__fields__ = dict(
+                node.__fields__ = ReadOnlyDict(
                     __isinstance__=IsinstanceField.ref,
                     __bases__=TypesListField.ref,
                     __fields__=FieldsDictionaryField.ref,
@@ -518,7 +518,7 @@ class BoilerPlate(object):
                         node.__type__ = "String"
                         node.required = True
                         node.default = None
-                node.__fields__ = dict(
+                node.__fields__ = ReadOnlyDict(
                     __type__=StringField.ref,
                     )
 
@@ -532,7 +532,7 @@ class BoilerPlate(object):
                     def types(node):
                         node.__isinstance__ = LinkFieldType.ref
                         node.__type__ = TypeType.ref
-                node.__fields__ = dict(
+                node.__fields__ = ReadOnlyDict(
                     __type__=TypeField.ref,
                     )
 
@@ -560,7 +560,7 @@ class BoilerPlate(object):
                 node.__bases__ = (ListFieldType.ref, )
                 node.__abstract__ = False
             def fields(node):
-                node.__fields__ = dict(
+                node.__fields__ = ReadOnlyDict(
                     __item__=FieldType.ref,
                     )
 
@@ -570,7 +570,7 @@ class BoilerPlate(object):
                 node.__bases__ = (DictionaryFieldType.ref, )
                 node.__abstract__ = False
             def fields(node):
-                node.__fields__ = dict(
+                node.__fields__ = ReadOnlyDict(
                     __key__=FieldType.ref,
                     __value__=FieldType.ref,
                     )
