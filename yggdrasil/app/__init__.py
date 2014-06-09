@@ -5,11 +5,17 @@ from inspect import getdoc
 from werkzeug.exceptions import HTTPException, NotFound
 from werkzeug.wrappers import Request
 
+from yggdrasil.record import Record
+
 class WebApp(object):
-    def __init__(self, urlmap, namespace, renderer):
+    def __init__(self, urlmap, namespace, renderer, show_refs=False):
         self.urlmap = urlmap
         self.renderer = renderer
         self.namespace = namespace
+        self.show_refs = show_refs
+
+    def build_url(self, request, endpoint, **params):
+        return request.urls.build(endpoint, params, force_external=True)
 
     def __getitem__(self, name):
         method = getattr(self, "on_" + name, None)
@@ -44,7 +50,9 @@ class WebApp(object):
         """
         This page shows current routing table with endpoints and descriptions.
         """
-        rules = {}
+
+        result = Record()
+        result.rules = rules = Record()
         for rule in self.urlmap.iter_rules():
             key = rule.rule
             value = dict(
@@ -60,7 +68,11 @@ class WebApp(object):
             description = getdoc(endpoint)
             if description is not None:
                 value["description"] = description
+            try:
+                if self.show_refs:
+                    value["ref"] = self.build_url(request, rule.endpoint)
+            except: pass
             rules[key] = value
-        return dict(
-            rules=rules,
-            )
+
+
+        return result

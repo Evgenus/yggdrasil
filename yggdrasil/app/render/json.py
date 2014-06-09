@@ -19,7 +19,7 @@ class APIEncoder(libjson.JSONEncoder):
         else:
             return libjson.JSONEncoder.default(self, obj)
 
-def renderer(data):
+def render(data):
     body = libjson.dumps(data, 
         cls=APIEncoder, 
         indent=2)

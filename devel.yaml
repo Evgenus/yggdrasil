@@ -131,6 +131,7 @@ server:
 
     application: !WebApp
         renderer: !resolve yggdrasil.app.render.json
+        show_refs: yes
 
         namespace:
             nodes: !Nodes
