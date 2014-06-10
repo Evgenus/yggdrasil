@@ -39,14 +39,20 @@ Runtime:
 WebApp:
     type: !resolve yggdrasil.app.WebApp
     load: !resolve metaconfig.construct_from_mapping
+Wrapper:
+    type: !resolve yggdrasil.app.Wrapper
+    load: !resolve metaconfig.construct_from_mapping
+Root:
+    type: !resolve yggdrasil.app.pages.root.Root
+    load: !resolve metaconfig.construct_from_mapping
 Nodes:
-    type: !resolve yggdrasil.app.pages.nodes.Nodes
+    type: !resolve yggdrasil.app.pages.nodes.NodesRefs
     load: !resolve metaconfig.construct_from_mapping
 Revisions:
-    type: !resolve yggdrasil.app.pages.revisions.Revisions
+    type: !resolve yggdrasil.app.pages.revisions.RevisionsRefs
     load: !resolve metaconfig.construct_from_mapping
 Branches:
-    type: !resolve yggdrasil.app.pages.branches.Branches
+    type: !resolve yggdrasil.app.pages.branches.BranchesRefs
     load: !resolve metaconfig.construct_from_mapping
 ...
 
@@ -83,7 +89,7 @@ urlmap: !Map
         string: /
         methods: 
         - GET
-        endpoint: intro
+        endpoint: root.intro
 
     - !Submount
         path: /branch/
@@ -130,19 +136,23 @@ server:
     use_reloader: True
 
     application: !WebApp
-        renderer: !resolve yggdrasil.app.render.json
-        show_refs: yes
-
         namespace:
-            nodes: !Nodes
-                runtime: !get_dependency runtime
-                show_refs: yes
-            revisions: !Revisions
-                runtime: !get_dependency runtime
-                show_refs: yes
-            branches: !Branches
-                runtime: !get_dependency runtime
-                show_refs: yes
+            root: !Wrapper
+                method: !resolve yggdrasil.app.render.json
+                content: !Root
+                    urlmap: !get_dependency urlmap
+            nodes: !Wrapper
+                method: !resolve yggdrasil.app.render.json
+                content: !Nodes
+                    runtime: !get_dependency runtime
+            revisions: !Wrapper
+                method: !resolve yggdrasil.app.render.json
+                content: !Revisions
+                    runtime: !get_dependency runtime
+            branches: !Wrapper
+                method: !resolve yggdrasil.app.render.json
+                content: !Branches
+                    runtime: !get_dependency runtime
 
         urlmap: !get_dependency urlmap
 ...

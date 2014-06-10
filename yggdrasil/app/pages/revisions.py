@@ -10,9 +10,8 @@ from yggdrasil.node import (
 from . import Page
 
 class Revisions(Page):
-    def __init__(self, runtime, show_refs=False):
+    def __init__(self, runtime):
         self.runtime = runtime
-        self.show_refs = show_refs
 
     def on_revision_by_id(self, request, rid): 
         rid = RevisionId.from_string(rid)
@@ -27,24 +26,29 @@ class Revisions(Page):
         result.nodes = revision.nodes
         result.nodes_refs = revision.refs
 
-        if self.show_refs:
-            result.refs = refs = Record()
-            refs.branch = self.build_url(request, 
-                    "branches.branch_by_id", bid=rid.branch)
+        return result
 
-            refs.ancestors = Record()
-            for number, rid in enumerate(revision.ancestors):
-                refs.ancestors[number] = self.build_url(request, 
-                    "revisions.revision_by_id", rid=rid)
+class RevisionsRefs(Revisions):
+    def on_revision_by_id(self, request, rid): 
+        result = super().on_revision_by_id(request, rid)
 
-            refs.nodes = Record()
-            for number, node_ref in enumerate(revision.nodes):
-                refs.nodes[number] = self.build_url(request, 
-                    "nodes.by_uid", uid=NodeId(node_ref, revision.id))
+        result.refs = refs = Record()
+        refs.branch = self.build_url(request, 
+                "branches.branch_by_id", bid=result.rid.branch)
 
-            refs.nodes_refs = Record()
-            for number, (ref, rid) in enumerate(revision.refs.items()):
-                refs.nodes_refs[number] = self.build_url(request, 
-                    "nodes.by_uid", uid=NodeId(ref, rid))
+        refs.ancestors = Record()
+        for number, rid in enumerate(result.ancestors):
+            refs.ancestors[number] = self.build_url(request, 
+                "revisions.revision_by_id", rid=rid)
+
+        refs.nodes = Record()
+        for number, node_ref in enumerate(result.nodes):
+            refs.nodes[number] = self.build_url(request, 
+                "nodes.by_uid", uid=NodeId(node_ref, result.rid))
+
+        refs.nodes_refs = Record()
+        for number, (ref, rid) in enumerate(result.nodes_refs.items()):
+            refs.nodes_refs[number] = self.build_url(request, 
+                "nodes.by_uid", uid=NodeId(ref, result.rid))
 
         return result
