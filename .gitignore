@@ -45,3 +45,4 @@ deps
 
 *.sublime-workspace
 venv/pyvenv.cfg
+*.exe
