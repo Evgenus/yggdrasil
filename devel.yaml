@@ -43,7 +43,7 @@ Wrapper:
     type: !resolve yggdrasil.app.Wrapper
     load: !resolve metaconfig.construct_from_mapping
 Root:
-    type: !resolve yggdrasil.app.pages.root.Root
+    type: !resolve yggdrasil.app.pages.root.RootRefs
     load: !resolve metaconfig.construct_from_mapping
 Nodes:
     type: !resolve yggdrasil.app.pages.nodes.NodesRefs
