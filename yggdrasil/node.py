@@ -203,7 +203,7 @@ class Revision(Node):
     def __init__(self, runtime, node_ref:NodeRef, revision_id:RevisionId, *ancestors):
         super().__init__(runtime, node_ref)
         self._rid = revision_id
-        self._ancestors = ancestors
+        self._ancestors = tuple(ancestors)
         self._nodes = set() # NodeRef
         self._refs = {} # NodeRef -> RevisionId
         self._finished = False
@@ -217,6 +217,9 @@ class Revision(Node):
     @property
     def finished(self):
         return self._finished
+
+    def finish(self):
+        self._finished = True
 
     @property
     def ancestors(self):
@@ -335,9 +338,9 @@ class Branch(Node):
         self.wc._merge(revision)
 
     def commit(self):
-        # TODO: Check for conflicts 
         old = self.wc
         old._finished = True
+        # here we need to create new Node with same bid
         self._revision += 1
         wc = Revision(self._runtime, None, RevisionId(self.id, self._revision), old.id)
         self._wc = wc.id
